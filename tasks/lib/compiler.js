@@ -71,23 +71,46 @@ var Compiler = function(grunt, options, cwd, expanded) {
       return true;
     });
 
-    var script = "  'use strict';" + grunt.util.linefeed;
+    if(!options.raw) {
 
-    script += paths
+      var script = "  'use strict';" + grunt.util.linefeed;
+
+      script += paths
+        .map(this.load)
+        .map(this.minify)
+        .map(function(source, i) {
+          return this.customize(source, paths[i]);
+        }.bind(this))
+        .map(this.stringify)
+        .map(function(string, i) {
+          return this.cache(string, this.url(files[i]), options.prefix);
+        }.bind(this))
+        .map(grunt.util.normalizelf)
+        .join(grunt.util.linefeed)
+      ;
+
+      return this.bootstrap(module, script);
+    } else {
+      var raw = paths
       .map(this.load)
       .map(this.minify)
       .map(function(source, i) {
         return this.customize(source, paths[i]);
       }.bind(this))
-      .map(this.stringify)
       .map(function(string, i) {
-        return this.cache(string, this.url(files[i]), options.prefix);
+        var file = this.url(files[i]);
+        if(options.prefix){
+          file = options.prefix + file;
+        }
+        return {
+          html: string,
+          path: file,
+        }
       }.bind(this))
-      .map(grunt.util.normalizelf)
-      .join(grunt.util.linefeed)
-    ;
 
-    return this.bootstrap(module, script);
+      return this.bootstrap(module, raw);
+    }
+
   };
 
   /**
